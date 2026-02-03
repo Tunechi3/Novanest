@@ -1,5 +1,34 @@
 const jwt = require("jsonwebtoken");
 const { UserModel } = require("../models/user.model");
+const multer = require('multer');
+const path = require('path');
+
+// Configure multer for image upload
+const storage = multer.diskStorage({
+  destination: function (req, file, cb) {
+    cb(null, 'uploads/avatars/'); // Make sure this folder exists
+  },
+  filename: function (req, file, cb) {
+    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+    cb(null, 'avatar-' + uniqueSuffix + path.extname(file.originalname));
+  }
+});
+
+const upload = multer({
+  storage: storage,
+  limits: { fileSize: 5 * 1024 * 1024 }, // 5MB limit
+  fileFilter: function (req, file, cb) {
+    const filetypes = /jpeg|jpg|png|gif/;
+    const extname = filetypes.test(path.extname(file.originalname).toLowerCase());
+    const mimetype = filetypes.test(file.mimetype);
+
+    if (mimetype && extname) {
+      return cb(null, true);
+    } else {
+      cb(new Error('Only image files are allowed!'));
+    }
+  }
+}).single('avatar');
 
 //register user
 const registerUser = async (req, res) => {
@@ -252,6 +281,63 @@ const changePassword = async (req, res) => {
   }
 };
 
+// Upload avatar function
+const uploadAvatar = async (req, res) => {
+  upload(req, res, async function (err) {
+    if (err instanceof multer.MulterError) {
+      return res.status(400).json({
+        status: false,
+        message: 'File upload error: ' + err.message,
+      });
+    } else if (err) {
+      return res.status(400).json({
+        status: false,
+        message: err.message,
+      });
+    }
+
+    if (!req.file) {
+      return res.status(400).json({
+        status: false,
+        message: 'No file uploaded',
+      });
+    }
+
+    try {
+      // Create the avatar URL (adjust based on your server setup)
+      const avatarUrl = `/uploads/avatars/${req.file.filename}`;
+
+      // Update user's avatar in database
+      const updatedUser = await UserModel.findByIdAndUpdate(
+        req.userId,
+        { avatar: avatarUrl },
+        { new: true }
+      ).select('-password');
+
+      if (!updatedUser) {
+        return res.status(404).json({
+          status: false,
+          message: 'User not found',
+        });
+      }
+
+      res.status(200).json({
+        status: true,
+        message: 'Avatar uploaded successfully',
+        data: {
+          avatar: avatarUrl,
+        },
+      });
+    } catch (error) {
+      res.status(500).json({
+        status: false,
+        message: 'Failed to update avatar',
+        error: error.message,
+      });
+    }
+  });
+};
+
 // Get user's cart
 const getCart = async (req, res) => {
   try {
@@ -296,5 +382,6 @@ module.exports = {
   getUserProfile,
   updateUserProfile,
   changePassword,
-  getCart
+  getCart,
+  uploadAvatar,
 };

@@ -79,6 +79,7 @@ app.use("/api/categories", categoryRoute);
 app.use("/api/products", productRoute);
 app.use("/api/cart", cartRoute);
 app.use("/api/orders", orderRoute);
+app.use('/uploads', express.static('uploads'));
 
 const port = process.env.PORT || 3000;
 app.listen(port, "0.0.0.0", () =>
