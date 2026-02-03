@@ -2,11 +2,19 @@ const jwt = require("jsonwebtoken");
 const { UserModel } = require("../models/user.model");
 const multer = require('multer');
 const path = require('path');
+const fs = require('fs'); // ← Add this line
+
+// ✅ Auto-create uploads folder if it doesn't exist
+const uploadsDir = 'uploads/avatars';
+if (!fs.existsSync(uploadsDir)) {
+  fs.mkdirSync(uploadsDir, { recursive: true });
+  console.log('✅ Created uploads/avatars folder');
+}
 
 // Configure multer for image upload
 const storage = multer.diskStorage({
   destination: function (req, file, cb) {
-    cb(null, 'uploads/avatars/'); // Make sure this folder exists
+    cb(null, 'uploads/avatars/');
   },
   filename: function (req, file, cb) {
     const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
